@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Time Tracker</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for backdrop blur which might not be in standard Tailwind CDN */
+        .backdrop-blur-lg {
+            backdrop-filter: blur(16px);
+        }
+        .backdrop-blur-sm {
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 p-4 sm:p-6 lg:p-8 font-sans">
+
+    <div id="app" class="max-w-5xl mx-auto bg-white/70 backdrop-blur-lg rounded-xl shadow-lg p-6">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Monthly Time Tracker</h1>
+
+        <!-- Header with month navigation -->
+        <div class="flex justify-between items-center mb-4">
+            <button id="prev-month-btn" class="px-4 py-2 bg-white/80 text-gray-700 rounded-lg hover:bg-white transition-colors shadow-sm">Previous</button>
+            <h2 id="current-month-year" class="text-2xl font-semibold text-gray-700"></h2>
+            <button id="next-month-btn" class="px-4 py-2 bg-white/80 text-gray-700 rounded-lg hover:bg-white transition-colors shadow-sm">Next</button>
+        </div>
+
+        <!-- Calendar grid -->
+        <div class="grid grid-cols-7 gap-2 text-center">
+            <!-- Day headers -->
+            <div class="font-semibold text-gray-600 p-2">Sun</div>
+            <div class="font-semibold text-gray-600 p-2">Mon</div>
+            <div class="font-semibold text-gray-600 p-2">Tue</div>
+            <div class="font-semibold text-gray-600 p-2">Wed</div>
+            <div class="font-semibold text-gray-600 p-2">Thu</div>
+            <div class="font-semibold text-gray-600 p-2">Fri</div>
+            <div class="font-semibold text-gray-600 p-2">Sat</div>
+            <!-- Calendar days will be injected here by JavaScript -->
+            <div id="calendar-grid" class="col-span-7 grid grid-cols-7 gap-2"></div>
+        </div>
+
+        <!-- Summary section -->
+        <div class="mt-8 pt-6 border-t border-gray-200">
+            <div class="flex justify-between items-center mb-4">
+                 <h3 class="text-xl font-semibold text-gray-800">Monthly Summary</h3>
+                 <button id="download-report-btn" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors shadow-md">Download Report</button>
+            </div>
+            <div class="flex justify-around flex-wrap gap-4">
+                <div class="text-center p-4 bg-blue-100/70 rounded-lg shadow-sm w-full sm:w-auto flex-1">
+                    <p id="summary-work" class="text-2xl font-bold text-blue-800">0</p>
+                    <p class="text-gray-600">Work Days</p>
+                </div>
+                <div class="text-center p-4 bg-red-100/70 rounded-lg shadow-sm w-full sm:w-auto flex-1">
+                    <p id="summary-off" class="text-2xl font-bold text-red-800">0</p>
+                    <p class="text-gray-600">Off Days</p>
+                </div>
+                <div class="text-center p-4 bg-green-100/70 rounded-lg shadow-sm w-full sm:w-auto flex-1">
+                    <p id="summary-extra" class="text-2xl font-bold text-green-800">0</p>
+                    <p class="text-gray-600">Extra Days</p>
+                </div>
+                 <div class="text-center p-4 bg-yellow-100/70 rounded-lg shadow-sm w-full sm:w-auto flex-1">
+                    <p id="summary-permission" class="text-2xl font-bold text-yellow-800">0</p>
+                    <p class="text-gray-600">Permissions</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Day Modal -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-8 shadow-2xl w-full max-w-md m-4">
+            <h3 id="modal-title" class="text-2xl font-bold mb-4 text-gray-800">Edit Day</h3>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <div id="modal-status-buttons" class="flex justify-between items-center rounded-lg overflow-hidden">
+                    <button data-status="work" class="flex-1 py-2 text-white transition-colors bg-blue-400 hover:bg-blue-500">Work</button>
+                    <button data-status="off" class="flex-1 py-2 text-white transition-colors bg-red-400 hover:bg-red-500">Off</button>
+                    <button data-status="extra" class="flex-1 py-2 text-white transition-colors bg-green-400 hover:bg-green-500">Extra</button>
+                    <button data-status="permission" class="flex-1 py-2 text-white transition-colors bg-yellow-400 hover:bg-yellow-500">Permission</button>
+                </div>
+            </div>
+
+            <div id="modal-time-inputs" class="flex justify-between gap-4 mb-4 hidden">
+                <div class="w-1/2">
+                    <label class="block text-sm font-medium text-gray-700">From</label>
+                    <input type="time" id="from-time" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                </div>
+                <div class="w-1/2">
+                    <label class="block text-sm font-medium text-gray-700">To</label>
+                    <input type="time" id="to-time" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Notes</label>
+                <textarea id="notes-input" class="w-full h-24 mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Add your notes here..."></textarea>
+            </div>
+
+            <div class="flex justify-end gap-4 mt-6">
+                <button id="modal-cancel-btn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
+                <button id="modal-save-btn" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- STATE MANAGEMENT ---
+            let currentMonth = new Date();
+            let daysData = []; // This will hold the data for each day of the month
+            let selectedDayIndex = null;
+            let modalStatus = 'work';
+
+            // --- DOM ELEMENTS ---
+            const calendarGrid = document.getElementById('calendar-grid');
+            const currentMonthYearEl = document.getElementById('current-month-year');
+            const prevMonthBtn = document.getElementById('prev-month-btn');
+            const nextMonthBtn = document.getElementById('next-month-btn');
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalStatusButtons = document.getElementById('modal-status-buttons');
+            const modalTimeInputs = document.getElementById('modal-time-inputs');
+            const fromTimeInput = document.getElementById('from-time');
+            const toTimeInput = document.getElementById('to-time');
+            const notesInput = document.getElementById('notes-input');
+            const modalCancelBtn = document.getElementById('modal-cancel-btn');
+            const modalSaveBtn = document.getElementById('modal-save-btn');
+            const downloadReportBtn = document.getElementById('download-report-btn');
+
+            // --- UTILITY FUNCTIONS ---
+            const getStatusColor = (status) => {
+                switch (status) {
+                    case 'off': return 'bg-red-200';
+                    case 'extra': return 'bg-green-200';
+                    case 'permission': return 'bg-yellow-200';
+                    case 'work': return 'bg-white';
+                    default: return 'bg-transparent';
+                }
+            };
+
+            const calculateHours = (from, to) => {
+                if (!from || !to) return null;
+                const fromDate = new Date(`1970-01-01T${from}:00`);
+                const toDate = new Date(`1970-01-01T${to}:00`);
+                if (isNaN(fromDate) || isNaN(toDate)) return null;
+                let diff = toDate.getTime() - fromDate.getTime();
+                if (diff < 0) diff += 24 * 60 * 60 * 1000;
+                const totalMinutes = Math.floor(diff / (1000 * 60));
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
+                const paddedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+                return `${hours}:${paddedMinutes}`;
+            };
+
+            // --- CORE LOGIC ---
+            const generateDays = (date) => {
+                const year = date.getFullYear();
+                const month = date.getMonth();
+                const firstDayOfMonth = new Date(year, month, 1);
+                const lastDayOfMonth = new Date(year, month + 1, 0);
+                const daysInMonth = lastDayOfMonth.getDate();
+                const startDay = firstDayOfMonth.getDay();
+
+                daysData = [];
+                for (let i = 0; i < startDay; i++) {
+                    daysData.push({ date: null, status: 'empty' });
+                }
+                for (let i = 1; i <= daysInMonth; i++) {
+                    daysData.push({
+                        date: new Date(year, month, i),
+                        status: 'work',
+                        notes: '',
+                        fromTime: '',
+                        toTime: ''
+                    });
+                }
+            };
+
+            const renderCalendar = () => {
+                calendarGrid.innerHTML = '';
+                currentMonthYearEl.textContent = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+                daysData.forEach((day, index) => {
+                    const dayEl = document.createElement('div');
+                    dayEl.className = `p-2 h-28 rounded-lg cursor-pointer transition-all duration-300 flex flex-col ${getStatusColor(day.status)}`;
+                    
+                    if (day.date) {
+                        dayEl.classList.add('hover:shadow-md', 'hover:scale-105');
+                        dayEl.dataset.index = index;
+
+                        let hoursHTML = '';
+                        if ((day.status === 'extra' || day.status === 'permission') && day.fromTime && day.toTime) {
+                            const hours = calculateHours(day.fromTime, day.toTime);
+                            const bgColor = day.status === 'extra' ? 'bg-green-100/80' : 'bg-yellow-100/80';
+                            const textColor = day.status === 'extra' ? 'text-green-800' : 'text-yellow-800';
+                            hoursHTML = `<div class="text-xs mt-1 font-semibold ${textColor} ${bgColor} rounded-full px-2 py-0.5 self-center">${hours}</div>`;
+                        }
+
+                        dayEl.innerHTML = `
+                            <div class="font-bold">${day.date.getDate()}</div>
+                            <div class="text-xs mt-1 capitalize text-gray-500">${day.status}</div>
+                            ${hoursHTML}
+                            ${day.notes ? `<div class="mt-auto text-left text-xs text-blue-500 truncate pt-1">📝 ${day.notes}</div>` : ''}
+                        `;
+                    }
+                    calendarGrid.appendChild(dayEl);
+                });
+                updateSummary();
+            };
+
+            const updateSummary = () => {
+                const workDays = daysData.filter(d => d.status === 'work' || d.status === 'extra' || d.status === 'permission').length;
+                const offDays = daysData.filter(d => d.status === 'off').length;
+                const extraDays = daysData.filter(d => d.status === 'extra').length;
+                const permissionDays = daysData.filter(d => d.status === 'permission').length;
+
+                document.getElementById('summary-work').textContent = workDays;
+                document.getElementById('summary-off').textContent = offDays;
+                document.getElementById('summary-extra').textContent = extraDays;
+                document.getElementById('summary-permission').textContent = permissionDays;
+            };
+
+            const openModal = (index) => {
+                selectedDayIndex = index;
+                const day = daysData[index];
+                
+                modalTitle.textContent = `Edit Day: ${day.date.toLocaleDateString()}`;
+                notesInput.value = day.notes || '';
+                fromTimeInput.value = day.fromTime || '';
+                toTimeInput.value = day.toTime || '';
+                
+                updateModalStatusUI(day.status);
+                modal.classList.remove('hidden');
+            };
+            
+            const updateModalStatusUI = (status) => {
+                modalStatus = status;
+                // Update button styles
+                modalStatusButtons.querySelectorAll('button').forEach(btn => {
+                    const btnStatus = btn.dataset.status;
+                    btn.className = `flex-1 py-2 text-white transition-colors `;
+                    if (btnStatus === status) {
+                        if (status === 'work') btn.classList.add('bg-blue-600');
+                        else if (status === 'off') btn.classList.add('bg-red-600');
+                        else if (status === 'extra') btn.classList.add('bg-green-600');
+                        else if (status === 'permission') btn.classList.add('bg-yellow-500');
+                    } else {
+                         if (btnStatus === 'work') btn.classList.add('bg-blue-400', 'hover:bg-blue-500');
+                         else if (btnStatus === 'off') btn.classList.add('bg-red-400', 'hover:bg-red-500');
+                         else if (btnStatus === 'extra') btn.classList.add('bg-green-400', 'hover:bg-green-500');
+                         else if (btnStatus === 'permission') btn.classList.add('bg-yellow-400', 'hover:bg-yellow-500');
+                    }
+                });
+
+                // Show/hide time inputs
+                if (status === 'extra' || status === 'permission') {
+                    modalTimeInputs.classList.remove('hidden');
+                } else {
+                    modalTimeInputs.classList.add('hidden');
+                }
+            };
+
+            const closeModal = () => {
+                modal.classList.add('hidden');
+                selectedDayIndex = null;
+            };
+
+            const saveChanges = () => {
+                if (selectedDayIndex !== null) {
+                    const dayToUpdate = daysData[selectedDayIndex];
+                    dayToUpdate.status = modalStatus;
+                    dayToUpdate.notes = notesInput.value;
+                    
+                    if (modalStatus === 'extra' || modalStatus === 'permission') {
+                        dayToUpdate.fromTime = fromTimeInput.value;
+                        dayToUpdate.toTime = toTimeInput.value;
+                    } else {
+                        dayToUpdate.fromTime = '';
+                        dayToUpdate.toTime = '';
+                    }
+                    renderCalendar();
+                    closeModal();
+                }
+            };
+
+            const downloadReport = () => {
+                const monthName = currentMonth.toLocaleString('default', { month: 'long' });
+                const year = currentMonth.getFullYear();
+                
+                let csvContent = "Date,Status,From,To,Notes\n";
+                daysData.forEach(day => {
+                    if (day.date) {
+                        const dateStr = day.date.toLocaleDateString();
+                        const notes = `"${(day.notes || '').replace(/"/g, '""')}"`;
+                        csvContent += `${dateStr},${day.status},${day.fromTime || ''},${day.toTime || ''},${notes}\n`;
+                    }
+                });
+
+                const workDays = daysData.filter(d => d.status === 'work' || d.status === 'extra' || d.status === 'permission').length;
+                const offDays = daysData.filter(d => d.status === 'off').length;
+                const extraDays = daysData.filter(d => d.status === 'extra').length;
+                const permissionDays = daysData.filter(d => d.status === 'permission').length;
+
+                csvContent += "\nMonthly Summary\n";
+                csvContent += `Work Days,${workDays}\n`;
+                csvContent += `Off Days,${offDays}\n`;
+                csvContent += `Extra Days,${extraDays}\n`;
+                csvContent += `Permission Days,${permissionDays}\n`;
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", `Time_Report_${monthName}_${year}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            // --- EVENT LISTENERS ---
+            prevMonthBtn.addEventListener('click', () => {
+                currentMonth.setMonth(currentMonth.getMonth() - 1);
+                generateDays(currentMonth);
+                renderCalendar();
+            });
+
+            nextMonthBtn.addEventListener('click', () => {
+                currentMonth.setMonth(currentMonth.getMonth() + 1);
+                generateDays(currentMonth);
+                renderCalendar();
+            });
+            
+            calendarGrid.addEventListener('click', (e) => {
+                const dayEl = e.target.closest('[data-index]');
+                if (dayEl) {
+                    openModal(parseInt(dayEl.dataset.index, 10));
+                }
+            });
+
+            modalStatusButtons.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    updateModalStatusUI(e.target.dataset.status);
+                }
+            });
+
+            modalCancelBtn.addEventListener('click', closeModal);
+            modalSaveBtn.addEventListener('click', saveChanges);
+            downloadReportBtn.addEventListener('click', downloadReport);
+
+            // --- INITIALIZATION ---
+            generateDays(currentMonth);
+            renderCalendar();
+        });
+    </script>
+</body>
+</html>
